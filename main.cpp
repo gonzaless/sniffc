@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <iomanip>
 #include <iostream>
 #include <tuple>
 #include <cassert>
@@ -19,9 +20,11 @@ struct hexstr {
 };
 
 std::ostream& operator<<(std::ostream& os, const hexstr& hs) {
+	os << std::hex;
 	for (std::size_t i = 0; i < hs.size; ++i) {
-		os << std::hex << static_cast<unsigned>(hs.data[i]);
+		os << std::setfill('0') << std::setw(2) << static_cast<unsigned>(hs.data[i]);
 	}
+	os << std::dec;
 	return os;
 }
 
@@ -29,7 +32,7 @@ struct print_target_info {
 	void operator()(const nfc::iso14443a_target_info& target) const {
 		std::cout << "iso14443a:"
 		    << " abt_atqa=" << hexstr(target.abt_atqa)
-		    << " bt_sak=" << target.bt_sak
+		    << " bt_sak=" << hexstr(target.bt_sak)
 		    << " uid_len=" << target.uid_len
 		    << " abt_uid=" << hexstr(target.abt_uid)
 		    << " ats_len=" << target.ats_len
