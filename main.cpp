@@ -15,6 +15,7 @@ struct hexstr {
 
 	template <std::size_t N>
 	hexstr(const std::uint8_t (&a)[N]): data(a), size(N) {}
+	hexstr(const std::uint8_t& b): data(&b), size(1) {}
 };
 
 std::ostream& operator<<(std::ostream& os, const hexstr& hs) {
@@ -26,19 +27,23 @@ std::ostream& operator<<(std::ostream& os, const hexstr& hs) {
 
 struct print_target_info {
 	void operator()(const nfc::iso14443a_target_info& target) const {
-		std::cout << "iso14443a: "
-		    << "abt_atqa=" << hexstr(target.abt_atqa)
-		    << "bt_sak=" << target.bt_sak
-		    << "uid_len=" << target.uid_len
-		    << "abt_uid=" << hexstr(target.abt_uid)
-		    << "ats_len=" << target.ats_len
-		    << "abt_ats=" << hexstr(target.abt_ats)
-
-		<< std::endl;
+		std::cout << "iso14443a:"
+		    << " abt_atqa=" << hexstr(target.abt_atqa)
+		    << " bt_sak=" << target.bt_sak
+		    << " uid_len=" << target.uid_len
+		    << " abt_uid=" << hexstr(target.abt_uid)
+		    << " ats_len=" << target.ats_len
+		    << " abt_ats=" << hexstr(target.abt_ats)
+		    << std::endl;
 	}
 
 	void operator()(const nfc::iso14443b_target_info& target) const {
-		std::cout << "iso14443b: " << std::endl;
+		std::cout << "iso14443b:"
+		    << " abt_pupi=" << hexstr(target.abt_pupi)
+		    << " abt_application_data=" << hexstr(target.abt_application_data)
+		    << " abt_protocol_info=" << hexstr(target.abt_protocol_info)
+		    << " ui8_card_identifier=" << hexstr(target.ui8_card_identifier)
+		    << std::endl;
 	}
 
 	template <typename TargetInfo>
