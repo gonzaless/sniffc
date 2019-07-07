@@ -8,6 +8,45 @@
 
 namespace sniffc {
 
+
+struct hexstr {
+	const std::uint8_t* data;
+	std::size_t size;
+
+	template <std::size_t N>
+	hexstr(const std::uint8_t (&a)[N]): data(a), size(N) {}
+};
+
+std::ostream& operator<<(std::ostream& os, const hexstr& hs) {
+	for (std::size_t i = 0; i < hs.size; ++i) {
+		os << std::hex << static_cast<unsigned>(hs.data[i]);
+	}
+	return os;
+}
+
+struct print_target_info {
+	void operator()(const nfc::iso14443a_target_info& target) const {
+		std::cout << "iso14443a: "
+		    << "abt_atqa=" << hexstr(target.abt_atqa)
+		    << "bt_sak=" << target.bt_sak
+		    << "uid_len=" << target.uid_len
+		    << "abt_uid=" << hexstr(target.abt_uid)
+		    << "ats_len=" << target.ats_len
+		    << "abt_ats=" << hexstr(target.abt_ats)
+
+		<< std::endl;
+	}
+
+	void operator()(const nfc::iso14443b_target_info& target) const {
+		std::cout << "iso14443b: " << std::endl;
+	}
+
+	template <typename TargetInfo>
+	void operator()(const TargetInfo& ) const {
+		std::cout << "Can't print target" << std::endl;
+	}
+};
+
 void print_supported_baud_rates(const nfc::device_t& device, const nfc::modulation_type modulation) {
 	std::cout << "    modulation type: " << nfc::to_string(modulation) << std::endl;
 	std::cout << "         baud rates: " << device.supported_baud_rates(modulation) << std::endl;
@@ -62,6 +101,7 @@ void read_tag(nfc::device_t& device) {
 
 	const auto& session_info = *maybe_session_info;
 	std::cout << "Target found on " << to_string(session_info.channel.type) << "/" << to_string(session_info.channel.rate) << std::endl;
+	nfc::visit(session_info, print_target_info());
 //		target.nm.nmt;
 //		print_nfc_target(&nt, verbose);
 

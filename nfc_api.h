@@ -121,10 +121,70 @@ constexpr bool is_valid(const channel_type& channel) {
 }
 
 
+struct iso14443a_target_info {
+	std::uint8_t abt_atqa[2];
+	std::uint8_t bt_sak;
+	std::size_t  uid_len;
+	std::uint8_t abt_uid[10];
+	std::size_t  ats_len;
+	std::uint8_t abt_ats[254]; // Maximal theoretical ATS is FSD-2, FSD=256 for FSDI=8 in RATS
+} __attribute__((packed)); // TODO remove
+
+struct iso14443b_target_info {
+	std::uint8_t abt_pupi[4];             // abtPupi store PUPI contained in ATQB (Answer To reQuest of type B) (see ISO14443-3)
+	std::uint8_t abt_application_data[4]; // abtApplicationData store Application Data contained in ATQB (see ISO14443-3)
+	std::uint8_t abt_protocol_info[3];    // abtProtocolInfo store Protocol Info contained in ATQB (see ISO14443-3)
+	std::uint8_t ui8_card_identifier;     // ui8CardIdentifier store CID (Card Identifier) attributted by PCD to the PICC
+};
+
+union target_info {
+	iso14443a_target_info iso14443a;
+	iso14443b_target_info iso14443b;
+	::nfc_iso14443a_info iso14443a_;
+	::nfc_iso14443b_info iso14443b_;
+	::nfc_iso14443bi_info iso14443bi;
+	::nfc_iso14443b2sr_info iso14443b2sr;
+	::nfc_iso14443b2ct_info iso14443b2ct;
+	::nfc_dep_info dep;
+	::nfc_felica_info felica;
+	::nfc_jewel_info jewel;
+};
+
 struct session_info {
-	nfc_target_info nti;
+	target_info target;
 	channel_type channel;
 };
+
+template <typename Fn>
+constexpr bool visit(const session_info& si, Fn&& fn) {
+	switch (si.channel.type) {
+		case modulation_type::ISO14443A:
+			fn(si.target.iso14443a);
+			return true;
+		case modulation_type::JEWEL:
+			fn(si.target.jewel);
+			return true;
+		case modulation_type::ISO14443B:
+			fn(si.target.iso14443b);
+			return true;
+		case modulation_type::ISO14443BI:
+			fn(si.target.iso14443bi);
+			return true;
+		case modulation_type::ISO14443B2SR:
+			fn(si.target.iso14443b2sr);
+			return true;
+		case modulation_type::ISO14443B2CT:
+			fn(si.target.iso14443b2ct);
+			return true;
+		case modulation_type::FELICA:
+			fn(si.target.felica);
+			return true;
+		case modulation_type::DEP:
+			fn(si.target.dep);
+			return true;
+	}
+	return false;
+}
 
 
 namespace detail {
@@ -442,10 +502,11 @@ public:
 		if (target_count == 0) {
 			return std::nullopt;
 		}
-		return session_info{
-			target.nti,
-			detail::to_channel_type(target.nm)
-		};
+		session_info result;
+		result.channel = detail::to_channel_type(target.nm);
+		static_assert(sizeof(result.target) == sizeof(target.nti));
+		std::memcpy(&result.target, &target.nti, sizeof(result.target));
+		return result;
 	}
 
 	void select_target(const nfc_modulation nm, const uint8_t *pbtInitData, const size_t szInitData, nfc_target* pnt) {
